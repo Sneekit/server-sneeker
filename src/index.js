@@ -1,7 +1,7 @@
 import { Client, GatewayIntentBits, Routes, REST, Events } from 'discord.js';
 import { config } from './config.js';
 import { commands } from './register-commands.js';
-import { startServer, stopServer, updateServer, isRunning, sendRconCommand, serverInfo } from './arkServer.js';
+import { startServer, stopServer, updateServer, isRunning, sendRconCommand, formatRconReply, serverInfo } from './arkServer.js';
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 
@@ -98,9 +98,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
     if (commandName === 'destroywilddinos') {
       await interaction.deferReply();
       const reply = await sendRconCommand('DestroyWildDinos');
-      await interaction.editReply(
-        `🦖💥 **Wild dinos destroyed.** Fresh spawns will repopulate shortly.${reply?.trim() ? `\n\`${reply.trim()}\`` : ''}`,
-      );
+      await interaction.editReply(`🦖 Sent \`DestroyWildDinos\`. ${formatRconReply(reply)}`);
       return;
     }
   } catch (err) {

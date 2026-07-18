@@ -175,8 +175,25 @@ export async function sendRconCommand(command) {
   try {
     return await conn.send(command);
   } finally {
-    await conn.end().catch(() => {});
+    // ASA never closes the RCON socket on its own, so a graceful conn.end()
+    // (which waits for the socket's 'close' event) would hang forever. The
+    // command has already executed and its full response is in hand, so just
+    // drop the socket — there is nothing left to wait for.
+    if (conn.socket && !conn.socket.destroyed) conn.socket.destroy();
   }
+}
+
+/**
+ * Format an RCON reply for a Discord message: echo the server's actual text
+ * in a code block, or a neutral note when the server returned nothing. RCON
+ * has no success/failure signal, so we report what the server said rather
+ * than asserting an outcome.
+ */
+export function formatRconReply(reply) {
+  const text = (reply ?? '').trim();
+  return text
+    ? `Server replied:\n\`\`\`\n${text}\n\`\`\``
+    : '_The server acknowledged the command but returned no message._';
 }
 
 export const serverInfo = {

@@ -1,0 +1,19 @@
+{
+  "name": "server-sneeker",
+  "version": "1.0.0",
+  "description": "Discord bot to start, stop, and Steam-update an Ark: Survival Ascended dedicated server.",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "register": "node src/register-commands.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "discord.js": "^14.16.3",
+    "dotenv": "^16.4.5",
+    "rcon-client": "^4.2.4"
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "server": {
+    "installDir": "C:\\ASA\\ShooterGame\\Binaries\\Win64",
+    "exeName": "ArkAscendedServer.exe",
+    "map": "TheIsland_WP",
+    "sessionName": "Server Sneeker",
+    "maxPlayers": 20,
+    "port": 7777,
+    "rconPort": 27020,
+    "extraArgs": ["-server", "-log", "-NoBattlEye"]
+  },
+  "steam": {
+    "steamCmdPath": "C:\\steamcmd\\steamcmd.exe",
+    "appId": "2430930",
+    "installDir": "C:\\ASA"
+  },
+  "rcon": {
+    "host": "127.0.0.1"
+  },
+  "timeouts": {
+    "updateMs": 1800000,
+    "startupGraceMs": 5000,
+    "shutdownWaitMs": 20000
+  }
+}

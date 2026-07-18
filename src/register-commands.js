@@ -15,7 +15,7 @@ export const commands = [
 ].map((c) => c.toJSON());
 
 // Allow running this file directly to (re)register guild commands.
-if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const rest = new REST({ version: '10' }).setToken(config.discord.token);
   try {
     console.log('Registering guild slash commands...');

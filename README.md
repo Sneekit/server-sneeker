@@ -9,8 +9,9 @@ A Discord bot that lets users in one designated channel **start**, **stop**, and
 | `/start`  | Updates the server files via SteamCMD, then launches `ArkAscendedServer.exe`. |
 | `/stop`   | `SaveWorld` + `DoExit` over RCON, then confirms the process has exited.        |
 | `/status` | Reports whether the server process is currently running.                       |
+| `/destroywilddinos` | Wipes all wild dinos over RCON (tamed dinos are unaffected); forces fresh spawns. |
 
-All three commands work **only** in the channel whose ID you set as `ALLOWED_CHANNEL_ID`.
+All commands work **only** in the channel whose ID you set as `ALLOWED_CHANNEL_ID`.
 
 ## Requirements
 
@@ -22,7 +23,7 @@ All three commands work **only** in the channel whose ID you set as `ALLOWED_CHA
 ## Setup
 
 1. **Install dependencies**
-   ```powershell
+   ```bash
    npm install
    ```
 
@@ -41,14 +42,14 @@ All three commands work **only** in the channel whose ID you set as `ALLOWED_CHA
    - Right-click the control channel → **Copy Channel ID** → `ALLOWED_CHANNEL_ID`.
 
 5. **Configure secrets**
-   ```powershell
-   Copy-Item .env.example .env
+   ```bash
+   cp .env.example .env
    ```
    Edit `.env` and fill in `DISCORD_TOKEN`, `CLIENT_ID`, `GUILD_ID`, `ALLOWED_CHANNEL_ID`, and a strong `RCON_PASSWORD`.
 
 6. **Configure the server paths**
-   ```powershell
-   Copy-Item config.example.json config.json
+   ```bash
+   cp config.example.json config.json
    ```
    Edit `config.json`:
    - `server.installDir` — folder containing `ArkAscendedServer.exe` (usually `...\ShooterGame\Binaries\Win64`).
@@ -57,7 +58,7 @@ All three commands work **only** in the channel whose ID you set as `ALLOWED_CHA
    - `steam.installDir` — where the server is/should be installed (the `+force_install_dir` target).
 
 7. **Run the bot**
-   ```powershell
+   ```bash
    npm start
    ```
    Slash commands are (re)registered automatically on startup. To register them manually without starting the bot: `npm run register`.
@@ -71,9 +72,29 @@ Ark: Survival Ascended has no built-in "stop" command, so the bot:
 3. Waits up to `timeouts.shutdownWaitMs` for the process to exit.
 4. If RCON was unreachable or the process is still up, force-stops it with `taskkill /F` as a last resort.
 
-## Running it 24/7
+## Running it in the background
 
-`npm start` runs in the foreground. To keep it alive across reboots, wrap it with a process manager such as [PM2](https://pm2.keymetrics.io/) (`npm i -g pm2; pm2 start src/index.js --name server-sneeker; pm2 save`) or create a Windows Scheduled Task that runs `npm start` at logon.
+`npm start` runs in the foreground. To detach it (git bash) so it keeps running after you close the terminal:
+
+```bash
+nohup node src/index.js > bot.log 2>&1 &
+disown
+echo $!        # prints the bot's real PID; note it down
+```
+
+- `nohup` — survives closing the terminal.
+- `> bot.log 2>&1` — sends all output to `bot.log`.
+- `disown` — drops it from the shell's job list so the shell won't kill it on exit.
+
+Check on it with `tail -f bot.log`; stop it with `kill <PID>`.
+
+If you forget the PID, find and kill it by its command line:
+
+```bash
+kill $(pgrep -f 'src/index.js')
+```
+
+> Note: this survives closing the terminal but **not a reboot**, and it won't auto-restart if the bot crashes. For always-on operation across reboots, run it as a Windows service (e.g. via [NSSM](https://nssm.cc/)) or a process manager like [PM2](https://pm2.keymetrics.io/).
 
 ## Notes
 

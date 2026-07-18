@@ -12,6 +12,9 @@ export const commands = [
   new SlashCommandBuilder()
     .setName('status')
     .setDescription('Check whether the Ark server is currently running.'),
+  new SlashCommandBuilder()
+    .setName('destroywilddinos')
+    .setDescription('Wipe all wild dinos (tamed dinos are unaffected). Forces fresh spawns.'),
 ].map((c) => c.toJSON());
 
 // Allow running this file directly to (re)register guild commands.

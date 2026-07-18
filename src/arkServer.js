@@ -158,6 +158,27 @@ export async function stopServer() {
   return { method: 'taskkill-forced' };
 }
 
+/**
+ * Send a single admin command over RCON and return the server's text reply.
+ * Throws if the server isn't running or RCON is unreachable.
+ */
+export async function sendRconCommand(command) {
+  if (!(await isRunning())) {
+    throw new Error('Server is not running.');
+  }
+  const conn = await Rcon.connect({
+    host: rcon.host,
+    port: rcon.port,
+    password: rcon.password,
+    timeout: 5000,
+  });
+  try {
+    return await conn.send(command);
+  } finally {
+    await conn.end().catch(() => {});
+  }
+}
+
 export const serverInfo = {
   map: server.map,
   sessionName: server.sessionName,

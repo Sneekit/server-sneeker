@@ -1,7 +1,7 @@
 {
   "name": "server-sneeker",
   "version": "1.0.0",
-  "description": "Discord bot to start, stop, and Steam-update an Ark: Survival Ascended dedicated server.",
+  "description": "Discord bot to start, stop, and Steam-update multiple game servers (Ark: Survival Ascended, Palworld).",
   "type": "module",
   "main": "src/index.js",
   "scripts": {

@@ -1,25 +1,87 @@
 {
-  "server": {
-    "installDir": "C:\\ASA\\ShooterGame\\Binaries\\Win64",
-    "exeName": "ArkAscendedServer.exe",
-    "map": "TheIsland_WP",
-    "sessionName": "Server Sneeker",
-    "maxPlayers": 20,
-    "port": 7777,
-    "rconPort": 27020,
-    "extraArgs": ["-server", "-log", "-NoBattlEye"]
+  "//": "Copy to config.json and edit for your machine. Every key under a server overrides the matching key in `defaults`, which in turn overrides the game adapter's built-in defaults (src/games/<game>.js).",
+
+  "defaults": {
+    "steam": {
+      "steamCmdPath": "C:\\steamcmd\\steamcmd.exe"
+    },
+    "rcon": {
+      "host": "127.0.0.1"
+    },
+    "timeouts": {
+      "updateMs": 1800000,
+      "startupGraceMs": 5000,
+      "shutdownWaitMs": 20000
+    },
+    "autoShutdown": {
+      "enabled": true,
+      "idleMinutes": 30,
+      "pollSeconds": 60
+    }
   },
-  "steam": {
-    "steamCmdPath": "C:\\steamcmd\\steamcmd.exe",
-    "appId": "2430930",
-    "installDir": "C:\\ASA"
-  },
-  "rcon": {
-    "host": "127.0.0.1"
-  },
-  "timeouts": {
-    "updateMs": 1800000,
-    "startupGraceMs": 5000,
-    "shutdownWaitMs": 20000
+
+  "//servers": "Keys are the names you type in Discord: /start server:ark. Use a-z, 0-9, _ or -.",
+  "servers": {
+    "ark": {
+      "game": "ark",
+      "sessionName": "My ASA Server",
+      "//installDir": "Where the exe lives. Ark buries it under ShooterGame\\Binaries\\Win64; omit this and it defaults to steam.installDir.",
+      "installDir": "C:\\ASA\\ShooterGame\\Binaries\\Win64",
+      "exeName": "ArkAscendedServer.exe",
+      "map": "TheIsland_WP",
+      "maxPlayers": 20,
+      "port": 7777,
+      "rconPort": 27020,
+      "//mods": "Ark-only. CurseForge IDs; the name is cosmetic, shown in /status.",
+      "mods": [{ "id": "0000000", "name": "Example Mod" }],
+      "extraArgs": ["-server", "-log", "-NoBattlEye"],
+      "steam": {
+        "appId": "2430930",
+        "installDir": "C:\\ASA"
+      },
+      "//autoShutdown": "Per server. Omit to inherit `defaults.autoShutdown`; each server keeps its own idle clock.",
+      "autoShutdown": {
+        "enabled": true,
+        "idleMinutes": 30,
+        "pollSeconds": 60
+      },
+      "//commands": "The whitelist behind /command server:ark name:<key>. Add an `args` block to let the command take free text, which is appended to the RCON string.",
+      "commands": {
+        "destroywilddinos": {
+          "rcon": "DestroyWildDinos",
+          "description": "Wipe all wild dinos (tamed are unaffected)."
+        },
+        "broadcast": {
+          "rcon": "Broadcast",
+          "description": "Send a message to everyone on the server.",
+          "args": { "required": true, "description": "The message to broadcast." }
+        }
+      }
+    },
+
+    "palworld": {
+      "game": "palworld",
+      "sessionName": "My Palworld Server",
+      "//exeName": "PalServer.exe is a launcher shim; the adapter already knows to watch for PalServer-Win64-Shipping[-Cmd].exe instead. Override with `processNames` if yours differs.",
+      "exeName": "PalServer.exe",
+      "maxPlayers": 32,
+      "port": 8211,
+      "rconPort": 25575,
+      "//settings": "Palworld has no launch-arg config: the adapter patches RCON, the admin password, port, player cap and server name into Pal\\Saved\\Config\\WindowsServer\\PalWorldSettings.ini before each start (backing it up once as .sneeker-backup). Set `settingsFile` to point somewhere else.",
+      "steam": {
+        "appId": "2394010",
+        "installDir": "C:\\PalServer"
+      },
+      "autoShutdown": {
+        "enabled": true,
+        "idleMinutes": 20,
+        "pollSeconds": 60
+      },
+      "commands": {
+        "save": { "rcon": "Save", "description": "Force an immediate world save." },
+        "players": { "rcon": "ShowPlayers", "description": "List connected players." },
+        "info": { "rcon": "Info", "description": "Show the server version and name." }
+      }
+    }
   }
 }

@@ -1,4 +1,4 @@
-import { Client, GatewayIntentBits, Routes, REST, Events } from 'discord.js';
+import { Client, GatewayIntentBits, Routes, REST, Events, MessageFlags } from 'discord.js';
 import { config, getServer } from './config.js';
 import { commands } from './register-commands.js';
 import {
@@ -82,7 +82,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
   if (interaction.channelId !== config.discord.allowedChannelId) {
     await interaction.reply({
       content: 'This command can only be used in the designated server-control channel.',
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
     return;
   }
@@ -92,13 +92,13 @@ client.on(Events.InteractionCreate, async (interaction) => {
   try {
     if (commandName === 'help') {
       // Ephemeral: help is a personal lookup, no need to clutter the channel.
-      await interaction.reply({ content: helpText(), ephemeral: true });
+      await interaction.reply({ content: helpText(), flags: MessageFlags.Ephemeral });
       return;
     }
 
     if (commandName === 'servers') {
       // Pure config lookup — no process or RCON calls, so no deferral needed.
-      await interaction.reply({ content: serversText(), ephemeral: true });
+      await interaction.reply({ content: serversText(), flags: MessageFlags.Ephemeral });
       return;
     }
 
@@ -116,7 +116,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       if (isBusy(server)) {
         await interaction.reply({
           content: `⏳ Another start/stop operation for **${server.name}** is already in progress.`,
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
         return;
       }
@@ -133,11 +133,16 @@ client.on(Events.InteractionCreate, async (interaction) => {
         const updateSummary = await updateServer(server);
         await interaction.editReply(`✅ ${updateSummary}\n🚀 Starting **${server.name}**…`);
         const { pid, settingsChanged } = await startServer(server);
-        const settingsNote = settingsChanged.length
-          ? `\n⚙️ Synced settings file: ${settingsChanged.join(', ')}`
-          : '';
+        // Host details like the PID stay in the bot's own log, out of Discord.
+        console.log(
+          `[${server.name}] started (pid ${pid})${settingsChanged.length ? ` — synced settings: ${settingsChanged.join(', ')}` : ''}`,
+        );
+        const settingsNote = settingsChanged.length ? '\n⚙️ Settings file synced from config.' : '';
+        const { facts, lines } = describeServer(server);
+        // Only emit the extra line(s) when there are any — no mods, no gap.
+        const detailLines = lines.length ? `\n${lines.join('\n')}` : '';
         await interaction.editReply(
-          `🟢 **${server.name} started!** "${server.sessionName}" (${describeServer(server).join(', ')}, PID ${pid})${settingsNote}\nGive it a couple minutes to appear in the server list.`,
+          `🟢 **${server.name} started!** "${server.sessionName}" (${facts.join(', ')})${detailLines}${settingsNote}\nGive it a couple minutes to appear in the server list.`,
         );
       } finally {
         setBusy(server, false);
@@ -150,7 +155,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       if (isBusy(server)) {
         await interaction.reply({
           content: `⏳ Another start/stop operation for **${server.name}** is already in progress.`,
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
         return;
       }
@@ -181,7 +186,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
           content: available.length
             ? `❌ **${server.name}** has no command "${name}". Available: ${available.join(', ')}.`
             : `❌ **${server.name}** has no configured commands. Add them under servers.${server.name}.commands in config.json.`,
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
         return;
       }
@@ -190,14 +195,14 @@ client.on(Events.InteractionCreate, async (interaction) => {
       if (entry.args?.required && !args) {
         await interaction.reply({
           content: `❌ \`${name}\` needs the \`args\` option: ${entry.args.description}`,
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
         return;
       }
       if (args && !entry.args) {
         await interaction.reply({
           content: `❌ \`${name}\` does not take arguments — leave \`args\` empty.`,
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
         return;
       }
@@ -216,7 +221,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
     if (interaction.deferred || interaction.replied) {
       await interaction.editReply(msg).catch(() => {});
     } else {
-      await interaction.reply({ content: msg, ephemeral: true }).catch(() => {});
+      await interaction.reply({ content: msg, flags: MessageFlags.Ephemeral }).catch(() => {});
     }
   }
 });
@@ -324,8 +329,13 @@ async function statusLine(server) {
     // RCON unreachable (still booting, or RCON disabled) — report the process
     // as up but don't claim a player count we don't have.
   }
-  const playerNote = players === null ? 'players: unknown (RCON unreachable)' : `players: ${players}/${server.maxPlayers}`;
-  return `🟢 **${server.name}** (${server.label}) — Online: "${server.sessionName}"\n   ${describeServer(server).join(', ')}, ${playerNote}`;
+  const playerNote =
+    players === null ? 'players: unknown (RCON unreachable)' : `players: ${players}/${server.maxPlayers}`;
+  const { facts, lines } = describeServer(server);
+  // Mods (and anything else in `lines`) get their own indented line; servers
+  // without any add no line at all.
+  const detail = [`${facts.join(', ')}, ${playerNote}`, ...lines];
+  return `🟢 **${server.name}** (${server.label}) — Online: "${server.sessionName}"\n   ${detail.join('\n   ')}`;
 }
 
 // ---- Idle auto-shutdown ----------------------------------------------------

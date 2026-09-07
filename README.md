@@ -63,9 +63,14 @@ There is deliberately **no raw-RCON command**. Everything that reaches a server 
 
 ```
 🟢 ark (Ark: Survival Ascended) — Online: "Sneekits Server"
-   Port: 7777, Map: TheIsland_WP, Mods: Pull It!, Super Spyglass, …, players: 3/70
-🔴 palworld (Palworld) — Offline.
+   Port: 7777, Map: TheIsland_WP, players: 3/70
+   🧩 Mods: Pull It!, Super Spyglass, Show Me The Range!, Floating Damage Number, Better Dinos
+
+🟢 palworld (Palworld) — Online: "Sneekits Palworld"
+   Port: 8211, players: 0/32
 ```
+
+The mod list always gets a line of its own, since inlining it buries the port and player count. A server with no mods gets no extra line at all.
 
 ### Custom commands
 
@@ -142,6 +147,7 @@ Because `args` text is appended to the RCON string verbatim, only give an `args`
    | `installDir` | Folder containing the exe. Defaults to `steam.installDir`; Ark needs it set explicitly because its exe lives under `ShooterGame\Binaries\Win64`. |
    | `exeName` | The executable to launch. |
    | `port`, `rconPort`, `maxPlayers` | Network and capacity settings. |
+   | `queryPort` | Steam query port (the server browser). **Must differ per server** — see below. |
    | `map` | Ark only. |
    | `mods` | Ark only — CurseForge IDs; the `name` is cosmetic, shown in `/status`. |
    | `extraArgs` | Extra command-line flags. |
@@ -151,6 +157,15 @@ Because `args` text is appended to the RCON string verbatim, only give an `args`
    | `commands` | The `/command` whitelist. |
 
    Anything you omit falls back to `defaults` in the same file, and then to the game adapter's own defaults in `src/games/<game>.js`. `defaults.steam.steamCmdPath` is a good place for the one path both servers share.
+
+   **Every port must be unique across all servers** — game, query and RCON alike. This bites hardest on the query port, because Ark and Palworld both default it to `27015`, so a two-server setup collides out of the box. The failure is nasty: the server that starts second reports a successful launch, then silently fails to bind the port it lost and never appears in the server browser. The bot therefore refuses to start at all if two servers claim the same number:
+
+   ```
+   Port 27015 is claimed by both ark query port and palworld query port.
+   Every game, query and RCON port must be unique across all servers in config.json.
+   ```
+
+   The shipped config uses `27015` for Ark and `27016` for Palworld.
 
 7. **Run the bot**
    ```bash
@@ -185,7 +200,7 @@ Everything game-specific lives in one file under `src/games/`; `serverManager.js
 - `buildLaunchArgs(server)` — the command line.
 - `applySettings(server)` — patch any on-disk config file before launch; return a list of what changed (Ark returns `[]`, since it has no settings file).
 - `rcon` — the `save` and `exit` commands, plus `playerCount.command` and a `parse` function for its reply. Set `dialect: 'palworld'` if the server doesn't echo RCON packet ids (see below).
-- `describe(server)` — extra `/status` detail lines.
+- `describe(server)` — extra detail for `/start` and `/status`, as `{ facts, lines }`. `facts` are short strings joined inline (Ark's map); each entry in `lines` is rendered on a line of its own (Ark's mod list). Return empty arrays for both if there's nothing to add — an empty `lines` emits no line at all.
 
 Then register it in `src/games/index.js` and reference it with `"game": "<id>"` in `config.json`.
 
@@ -196,9 +211,11 @@ These are handled in the code, but worth knowing if you're debugging:
 - **Palworld's exe is a launcher shim.** You launch `PalServer.exe`, but the process that stays alive is `PalServer-Win64-Shipping-Cmd.exe` (or the non-`-Cmd` variant, depending on how it was started). Detection matches any name in `processNames`, and the startup grace period is longer to let the handoff finish.
 - **`tasklist` truncates long image names.** Its default table output cuts the name at 25 characters, so `PalServer-Win64-Shipping-Cmd.exe` prints as `PalServer-Win64-Shipping-` and never matches. The bot uses `/FO CSV`, which prints the full name.
 - **Palworld has no launch-arg config.** RCON, the admin password, port, player cap and server name all live in `Pal\Saved\Config\WindowsServer\PalWorldSettings.ini`, read only at startup. The adapter patches that file before every launch to match `config.json`, keeping a one-time backup as `PalWorldSettings.ini.sneeker-backup`. RCON will not come up until a restart after RCON is first enabled.
+- **Palworld's query port is command-line only.** `PalWorldSettings.ini` has no query-port key — it covers `PublicPort`, `RCONPort`, `RCONEnabled`, `AdminPassword`, `ServerName` and `ServerPlayerMaxNum`, and nothing else — so the Steam query port can only be set with `-queryport=` at launch. The adapter writes the RCON block, server name and player cap into the ini, and passes the game port, player cap and query port on the command line (where the CLI values win). Don't go looking for a query port in the ini; it isn't there.
 - **Palworld doesn't echo RCON packet ids.** It replies with id `0` instead of mirroring the request id, so `rcon-client` — which matches replies to requests by that id — waits forever even though the server ran the command. Palworld therefore uses the small id-tolerant client in `src/rconLite.js`, which correlates replies by arrival order. Ark stays on `rcon-client`.
 - **Palworld's `Broadcast` drops anything after the first space.** A server-side limitation, not a bot one.
 - **Neither game closes its RCON socket cleanly.** A graceful `end()` would hang waiting for a close event that never arrives, so the bot drops the socket once it has the reply.
+- **Palworld leaks RCON connection slots.** After the client disconnects, the server's end of the socket sits in `CloseWait` indefinitely, and it takes only a couple of those before Palworld stops answering new RCON connections at all — the port still accepts TCP, but authentication never gets a reply, and it stays that way until the server restarts. Because of this the bot holds **one long-lived RCON connection per server** and reuses it, rather than connecting per command; a stale connection is dropped and retried once. Opening a connection per command (with `/status` polling on a timer) wedges Palworld's RCON within minutes.
 
 ## Running it in the background
 
@@ -214,6 +231,7 @@ tail -f bot.log    # watch it
 
 ## Notes
 
+- **Host details stay out of Discord.** Replies name the server, its session name, port, map and mods — things players legitimately need — but process IDs and the specific settings keys that were synced go to `bot.log` instead. Errors are the exception: they surface the underlying message, which can include absolute paths from a failed launch or SteamCMD run.
 - `.env` and `config.json` are gitignored — only the `.example` files are committed. Never commit your real token.
 - Servers are launched **detached**, so they keep running if the bot restarts. `/status` and `/stop` detect them by scanning the process list, so they work even after a bot restart.
 - Start/stop locks are **per server**, so starting Ark never blocks starting Palworld. There is no guard against running both at once — mind the machine's RAM.

@@ -31,6 +31,8 @@
       "map": "TheIsland_WP",
       "maxPlayers": 20,
       "port": 7777,
+      "//queryPort": "Steam query port (server browser). Games default this to 27015, so give every server its own or the second one to start silently drops out of the browser.",
+      "queryPort": 27015,
       "rconPort": 27020,
       "//mods": "Ark-only. CurseForge IDs; the name is cosmetic, shown in /status.",
       "mods": [{ "id": "0000000", "name": "Example Mod" }],
@@ -66,6 +68,7 @@
       "exeName": "PalServer.exe",
       "maxPlayers": 32,
       "port": 8211,
+      "queryPort": 27016,
       "rconPort": 25575,
       "//settings": "Palworld has no launch-arg config: the adapter patches RCON, the admin password, port, player cap and server name into Pal\\Saved\\Config\\WindowsServer\\PalWorldSettings.ini before each start (backing it up once as .sneeker-backup). Set `settingsFile` to point somewhere else.",
       "steam": {

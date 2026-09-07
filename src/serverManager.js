@@ -288,7 +288,16 @@ export function formatRconReply(reply) {
     : '_The server acknowledged the command but returned no message._';
 }
 
-/** Shared /status detail lines, plus whatever the game wants to add. */
+/**
+ * Shared server detail, plus whatever the game adds.
+ * `facts` are meant to be joined inline; each entry in `lines` belongs on a
+ * line of its own (Ark's mod list). `lines` is empty when there's nothing to
+ * put there, so callers must not emit a newline for it unconditionally.
+ */
 export function describeServer(server) {
-  return [`Port: ${server.port}`, ...server.game.describe(server)];
+  const extra = server.game.describe(server);
+  return {
+    facts: [`Port: ${server.port}`, ...(extra.facts ?? [])],
+    lines: extra.lines ?? [],
+  };
 }

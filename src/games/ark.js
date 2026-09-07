@@ -26,6 +26,7 @@ export default {
   defaults: {
     exeName: 'ArkAscendedServer.exe',
     port: 7777,
+    queryPort: 27015,
     rconPort: 27020,
     maxPlayers: 20,
     extraArgs: ['-server', '-log', '-NoBattlEye'],
@@ -43,6 +44,10 @@ export default {
       'listen',
       `SessionName=${server.sessionName}`,
       `Port=${server.port}`,
+      // The Steam query port must be unique per server on the box — both Ark
+      // and Palworld default it to 27015, so whichever starts second fails to
+      // bind it and never shows up in the server browser.
+      `QueryPort=${server.queryPort}`,
       'RCONEnabled=True',
       `RCONPort=${server.rconPort}`,
       `ServerAdminPassword=${server.rcon.password}`,
@@ -78,12 +83,16 @@ export default {
     },
   },
 
-  /** Extra detail for /status, beyond the shared name/port/player lines. */
+  /**
+   * Extra detail for /start and /status, beyond the shared port line.
+   * `facts` are short enough to sit inline; `lines` get a line to themselves —
+   * the mod list is long enough that inlining it buries everything else.
+   */
   describe(server) {
     const mods = normalizeMods(server);
-    return [
-      `Map: ${server.map}`,
-      mods.length ? `Mods: ${mods.map((m) => m.name).join(', ')}` : null,
-    ].filter(Boolean);
+    return {
+      facts: [`Map: ${server.map}`],
+      lines: mods.length ? [`🧩 Mods: ${mods.map((m) => m.name).join(', ')}`] : [],
+    };
   },
 };

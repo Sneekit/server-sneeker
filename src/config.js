@@ -115,6 +115,9 @@ function buildServer(name, raw) {
     map: raw.map ?? gd.map,
     maxPlayers: raw.maxPlayers ?? gd.maxPlayers,
     port: raw.port ?? gd.port,
+    // Steam query port (server browser). Games tend to default this to 27015,
+    // so two servers on one box will collide unless it's set apart.
+    queryPort: raw.queryPort ?? gd.queryPort,
     rconPort: raw.rconPort ?? gd.rconPort,
     mods: raw.mods ?? [],
     extraArgs: raw.extraArgs ?? gd.extraArgs ?? [],
@@ -150,6 +153,38 @@ for (const [name, raw] of Object.entries(fileConfig.servers)) {
   }
   servers[key] = buildServer(key, raw);
 }
+
+/**
+ * Fail fast on port collisions between servers.
+ *
+ * This is worth checking at boot because the symptom is otherwise invisible
+ * and misleading: the game that starts second launches "successfully", but
+ * silently fails to bind the port it lost and never appears in the server
+ * browser. Games commonly share defaults — both Ark and Palworld default the
+ * Steam query port to 27015 — so a two-server setup collides out of the box.
+ */
+function assertNoPortCollisions(all) {
+  const seen = new Map(); // port number -> "server.role" that claimed it first
+  for (const server of Object.values(all)) {
+    for (const [role, port] of [
+      ['game port', server.port],
+      ['query port', server.queryPort],
+      ['RCON port', server.rconPort],
+    ]) {
+      if (port === undefined || port === null) continue;
+      const owner = `${server.name} ${role}`;
+      const existing = seen.get(port);
+      if (existing) {
+        throw new Error(
+          `Port ${port} is claimed by both ${existing} and ${owner}. Every game, query and RCON port must be unique across all servers in config.json.`,
+        );
+      }
+      seen.set(port, owner);
+    }
+  }
+}
+
+assertNoPortCollisions(servers);
 
 export const config = {
   discord: {

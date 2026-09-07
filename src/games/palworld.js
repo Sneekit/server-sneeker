@@ -53,6 +53,7 @@ export default {
     // process depending on how the server was started (Steam picks -Cmd).
     processNames: ['PalServer-Win64-Shipping-Cmd.exe', 'PalServer-Win64-Shipping.exe'],
     port: 8211,
+    queryPort: 27015,
     rconPort: 25575,
     maxPlayers: 32,
     // Palworld's documented performance flags for dedicated servers.
@@ -114,6 +115,10 @@ export default {
     // so pass them for good measure; RCON is ini-only.
     return [
       `-port=${server.port}`,
+      // Steam query port. Palworld defaults it to 27015, exactly like Ark, so
+      // running both on one box needs them set apart explicitly or the second
+      // server to start can't bind it and stays out of the server browser.
+      `-queryport=${server.queryPort}`,
       `-players=${server.maxPlayers}`,
       ...(server.extraArgs ?? []),
     ];
@@ -149,6 +154,7 @@ export default {
   },
 
   describe() {
-    return [];
+    // Palworld has no mods or map to report beyond the shared port line.
+    return { facts: [], lines: [] };
   },
 };
